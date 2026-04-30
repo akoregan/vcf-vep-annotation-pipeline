@@ -3,7 +3,7 @@
 ### Introduction 
 This repository implements a variant annotation pipeline built around the Ensembl Variant Effect Predictor (VEP), with attention to a specific design question raised by the input data: how to handle a VCF whose two sample columns turn out not to be independent samples. The pipeline was developed against the given dataset, **input_vcf_data.vcf**, which features two sample columns labeled _normal_ and _vaf5_, with no accompanying documentation about their relationship. Inspection of the data using the **compare_samples.sh** script shows that the sample genotypes are the same across 99.97% of variants and ~75% of sample "FORMAT" columns are entirely identical. These and other descriptive statistics, along with the sample naming, suggest these are paired outputs from the same source, with *vaf5* representing a particular VAF sensitivity threshold and *normal* representing a standard tier. 
 
-This pipeline writes a separate CSV for each sample to preserve the distinction between the two analytical views. As it stands, it omits MAF from the output as it is a population-level metric that requires multiple independent samples. This pipeline uses VEP's --pick parameter, which selects a single canonical transcript per variant according to VEP's pick order. This yields a flat, easy-to-filter output at the cost of discarding alternative transcript annotations and regulatory predictions; for clinical or research workflows requiring all transcript-level effects, --pick should be removed and the pipeline updated to emit one row per (variant, transcript) pair. 
+This pipeline writes a separate CSV for each sample to preserve the distinction between the two analytical views. As it stands, it omits MAF from the output as it is a population-level metric that requires multiple independent samples. This pipeline uses VEP's --pick parameter, which selects a single canonical transcript per variant according to VEP's pick order. This yields a flat, easy-to-filter output at the cost of discarding alternative transcript annotations and regulatory predictions; for clinical or research workflows requiring all transcript-level effects, --pick should be removed and the pipeline updated to emit one row per variant-transcript pair. 
 
 The CSV output functions as a precursor for several downstream analytical functions, including:
 
@@ -13,17 +13,17 @@ The CSV output functions as a precursor for several downstream analytical functi
 
 ### Data Inspection
 
-Prior to annotation, **compare_samples.sh** inspects the descriptive statistics comparing the similarity of the two samples in the VCF input file, printing the results to the terminal interface. The high concordance between the two samples across most variant fields suggests they originate from a common source but were processed under different standards.
+Prior to annotation, **compare_samples.sh** inspects the descriptive statistics comparing the similarity of the two samples in the VCF input file, printing the results to the terminal interface. The high concordance between the two samples across most variant fields suggests they originate from a common source but were processed under different standards. Note that  **compare_samples.sh** is hard-coded for the daa structure in **input_vcf_data.vcf**.
 
 ### Annotation Pipeline
 
 The **run_annotation.sh** script first splits multiallelic variants into distinct lines to preserve each of their downstream annotations. As a preprocessing step, the pipeline strips the FORMAT/DPR field, which has a header inconsistency in the input VCF that prevents `bcftools` normalization from executing this split. Then, the script runs:
 
 1. The VEP Docker container using a mounted GRCh37 cache to access VEP annotations.
-2. The `bcftools` command line suite to extract relevant data fields.
+2. The `bcftools` command line suite to extract relevant read and VEP data fields.
 3. A Python script *write_variant_csv.py* to reformat and save the final output to a CSV.
 
-Note that while **compare_samples.sh** is hard-coded to inspect this particular VCF, **run_annotation.sh** can run across different inputs with any number of samples.
+The **run_annotation.sh** script has been refactored to process VCF inputs with any number of samples.
 
 #### Pipeline Execution: [0] Installing Dependencies and Ensembl VEP Docker Image
 
@@ -45,7 +45,7 @@ docker run -t -i -v $HOME/vep_data:/data ensemblorg/ensembl-vep INSTALL.pl -a cf
 
 #### Pipeline Execution: [1] Running Sample Comparison and Annotation Scripts
 
-Ensure that the input VCF file is located in the repository's root directory. From this directory, first ensure that **compare_samples.sh** and **run_annotation.sh** are executable: ```chmod +x <filename>```. Each shell script can be run as follows: 
+Ensure that the input VCF file is located in the repository's root directory. From this directory, first ensure that **compare_samples.sh** and **run_annotation.sh** are executable: `chmod +x <filename>`. Each shell script can be run from the repository's root directory as follows: 
 
 ```
 # compare sample statistics
