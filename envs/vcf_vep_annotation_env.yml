@@ -1,0 +1,9 @@
+name: vcf_vep_annotation_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - pandas
+  - bcftools
+  - python=3.11
